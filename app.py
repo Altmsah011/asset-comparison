@@ -18,7 +18,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# 2. إدارة قاعدة البيانات المحلية للمستخدمين
+# 2. إدارة قاعدة البيانات المحلية للمخدم للمستخدمين
 DB_FILE = "users_db.txt"
 
 def load_users():
@@ -65,7 +65,7 @@ if not st.session_state["logged_in"]:
 
 # --- واجهة البرنامج الأساسية ---
 else:
-    top_col1, top_col2 = st.columns([4, 1])
+    top_col1, top_col2 = st.columns(2)
     with top_col1:
         st.title("📦 نظام المطابقة المطور")
         st.caption(f"👤 المستخدم الحالي: **{st.session_state['current_user']}**")
@@ -109,15 +109,11 @@ else:
     new_file = st.file_uploader("📁 ارفع الملف الجديد", type=["xlsx"])
 
     if old_file and new_file:
-        # قراءة البيانات بشكل معزول ومستقر في الذاكرة
-        if "data_loaded" not in st.session_state or st.session_state.get("loaded_filename") != new_file.name:
+        # قراءة البيانات بشكل معزول ومستقر في الذاكرة لمنع البطء والتقطيع
+        if "loaded_filename" not in st.session_state or st.session_state.get("loaded_filename") != new_file.name:
             st.session_state["old_df"] = pd.read_excel(old_file)
             st.session_state["new_df"] = pd.read_excel(new_file)
             st.session_state["loaded_filename"] = new_file.name
-            st.session_state["data_loaded"] = True
-            # تصفير أي عمليات سابقة
-            for k in ["new_items", "missing_items", "changed_items", "final_items"]:
-                if k in st.session_state: del st.session_state[k]
 
         old_df = st.session_state["old_df"]
         new_df = st.session_state["new_df"]
@@ -189,15 +185,16 @@ else:
                 cols = [old_key] + [c for c in changed_df.columns if c != old_key]
                 changed_df = changed_df[cols]
 
-            # حفظ النتائج في الـ session_state بشكل دائم وثابت
+            # تجميد البيانات في الذاكرة حتى لا تمسح عند استعراض الراديو بالأسفل
             st.session_state["new_items"] = new_items
             st.session_state["missing_items"] = missing
             st.session_state["changed_items"] = changed_df
             st.session_state["final_items"] = new_df.copy()
+            st.session_state["match_processed"] = True
             st.success("تمت عملية المطابقة بنجاح! 🎯")
 
-        # عرض واستخراج التقرير النهائي بدون ومضان أو خلل
-        if "new_items" in st.session_state:
+        # عرض واستخراج التقرير النهائي (يعتمد على قفل التجميد match_processed)
+        if st.session_state.get("match_processed", False):
             st.write("---")
             st.subheader("📊 استعراض الجداول والنتائج")
             
@@ -213,7 +210,7 @@ else:
                 else:
                     st.info("لا توجد اختلافات مكتشفة في قيم الحقول المشتركة.")
 
-            # إنشاء وتحميل ملف الاكسيل النهائي بشكل فوري ومستقر
+            # إنشاء وتحميل ملف الاكسيل النهائي
             st.write("---")
             st.subheader("💾 استخراج ملف التقرير المحدث")
             
@@ -222,3 +219,5 @@ else:
                 st.session_state["final_items"].to_excel(writer, sheet_name="البيانات النهائية", index=False)
                 st.session_state["new_items"].to_excel(writer, sheet_name="الجديدة", index=False)
                 st.session_state["missing_items"].to_excel(writer, sheet_name="المفقودة", index=False)
+                st.session_state["changed_items"].to_excel(writer, sheet_name="التعديلات والاختلافات", index=False)
+            
