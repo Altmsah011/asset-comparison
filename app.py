@@ -5,10 +5,16 @@ import os
 
 st.set_page_config(page_title="نظام المطابقة المطور", layout="wide")
 
-# RTL Arabic UI Styling
+# إعداد واجهة مستقرة تدعم اللغة العربية دون التأثير على أداء المتصفح
 st.markdown("""
 <style>
-html, body, [class*="css"] {
+/* تهيئة النصوص والاتجاهات بشكل آمن */
+html, body, [data-testid="stAppViewContainer"] {
+    direction: rtl;
+    text-align: right;
+}
+/* إصلاح محاذاة حقول الرفع والاختيار لتمنع التقطيع */
+[data-testid="stSelectbox"], [data-testid="stFileUploader"] {
     direction: rtl;
     text-align: right;
 }
@@ -53,7 +59,6 @@ if "current_user" not in st.session_state:
 if not st.session_state["logged_in"]:
     st.title("🔐 تسجيل الدخول إلى النظام")
     
-    # تم تحديد الرقم 3 داخل الأقواس لتفادي خطأ TypeError
     col1, col2, col3 = st.columns(3)
     with col2:
         st.write("الرجاء إدخال بيانات حسابك للوصول إلى نظام المطابقة:")
@@ -74,12 +79,12 @@ if not st.session_state["logged_in"]:
 # ==========================================
 else:
     # شريط علوي يحتوي على ترحيب بالمستخدم الحالي وزر تسجيل الخروج
-    top_col1, top_col2 = st.columns(2) # تم تحديد الرقم 2 هنا أيضاً للأمان
+    top_col1, top_col2 = st.columns(2)
     with top_col1:
         st.title("📦 نظام المطابقة المطور")
         st.caption(f"👤 المستخدم الحالي: **{st.session_state['current_user']}**")
     with top_col2:
-        st.write("") # محاذاة
+        st.write("") 
         if st.button("تسجيل الخروج 🚪", use_container_width=True):
             st.session_state["logged_in"] = False
             st.session_state["current_user"] = ""
@@ -94,13 +99,13 @@ else:
         with st.expander("🛠️ لوحة تحكم مدير النظام (إدارة المستخدمين)", expanded=False):
             st.subheader("➕ إضافة مستخدم جديد")
             
-            new_u_col, new_p_col, btn_col = st.columns(3) # تم تحديد الرقم 3 هنا
+            new_u_col, new_p_col, btn_col = st.columns(3)
             with new_u_col:
                 new_username = st.text_input("👤 اسم المستخدم الجديد").strip().lower()
             with new_p_col:
                 new_password = st.text_input("🔑 كلمة المرور للمستخدِم الجديد", type="password")
             with btn_col:
-                st.write("") # محاذاة مع الحقول
+                st.write("") 
                 st.write("") 
                 if st.button("إضافة الحساب 💾", use_container_width=True):
                     if not new_username or not new_password:
@@ -232,7 +237,3 @@ else:
             st.success("تمت المطابقة وفحص التغييرات بنجاح ✅")
 
         # =========================
-        # عرض النتائج
-        # =========================
-        if "new_items" in st.session_state:
-            st.write("---")
