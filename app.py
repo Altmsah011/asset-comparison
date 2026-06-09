@@ -3,23 +3,8 @@ import pandas as pd
 from io import BytesIO
 import os
 
+# إعداد الصفحة القياسي بدون أي تداخلات CSS خارجية مسببة للتقطيع
 st.set_page_config(page_title="نظام المطابقة المطور", layout="wide")
-
-# إعداد واجهة مستقرة تدعم اللغة العربية دون التأثير على أداء المتصفح
-st.markdown("""
-<style>
-/* تهيئة النصوص والاتجاهات بشكل آمن */
-html, body, [data-testid="stAppViewContainer"] {
-    direction: rtl;
-    text-align: right;
-}
-/* إصلاح محاذاة حقول الرفع والاختيار لتمنع التقطيع */
-[data-testid="stSelectbox"], [data-testid="stFileUploader"] {
-    direction: rtl;
-    text-align: right;
-}
-</style>
-""", unsafe_allow_html=True)
 
 # --- إدارة قاعدة بيانات المستخدمين باستخدام ملف نصي لحفظ البيانات ---
 DB_FILE = "users_db.txt"
@@ -237,3 +222,11 @@ else:
             st.success("تمت المطابقة وفحص التغييرات بنجاح ✅")
 
         # =========================
+        # عرض النتائج
+        # =========================
+        if "new_items" in st.session_state:
+            st.write("---")
+            st.subheader("📊 استعراض نتائج المطابقة")
+            
+            view_option = st.selectbox(
+                "اختر جدول البيانات الذي ترغب في عرضه:",
