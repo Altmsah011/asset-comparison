@@ -4,6 +4,7 @@ from io import BytesIO
 
 st.set_page_config(page_title="نظام المطابقة", layout="wide")
 
+# RTL Arabic UI
 st.markdown("""
 <style>
 html, body, [class*="css"] {
@@ -26,13 +27,13 @@ if old_file and new_file:
 
     st.success("تم تحميل الملفات بنجاح ✅")
 
-    # اختيار مفتاح المطابقة
+    # اختيار عمود المطابقة
     st.subheader("🔗 اختيار عمود المطابقة")
 
-    old_key = st.selectbox("عمود المطابقة في القديم", old_df.columns)
-    new_key = st.selectbox("عمود المطابقة في الجديد", new_df.columns)
+    old_key = st.selectbox("عمود المطابقة في الملف القديم", old_df.columns)
+    new_key = st.selectbox("عمود المطابقة في الملف الجديد", new_df.columns)
 
-    # Mapping
+    # ربط الأعمدة
     st.subheader("🔗 ربط الأعمدة")
 
     mapping = {}
@@ -47,9 +48,11 @@ if old_file and new_file:
             key=col_old
         )
 
+    # =========================
+    # زر بدء المطابقة
+    # =========================
     if st.button("🚀 بدء المطابقة"):
 
-        # توحيد المفاتيح
         old_df = old_df.rename(columns={old_key: "key"})
         new_df = new_df.rename(columns={new_key: "key"})
 
@@ -61,66 +64,41 @@ if old_file and new_file:
             indicator=True
         )
 
-        # 🟢 الجديدة
-        new_items = merged[merged["_merge"] == "right_only"]
+        # حفظ النتائج
+        st.session_state["new_items"] = merged[merged["_merge"] == "right_only"]
+        st.session_state["missing_items"] = merged[merged["_merge"] == "left_only"]
+        st.session_state["matched"] = merged[merged["_merge"] == "both"]
 
-        # 🔴 المفقودة
-        missing_items = merged[merged["_merge"] == "left_only"]
+        st.success("تمت المطابقة بنجاح ✅")
 
-        # 🟡 المشتركة
-        matched = merged[merged["_merge"] == "both"]
-
-        # ⚠️ التغييرات
-        changes_list = []
-
-        for old_col, new_col in mapping.items():
-
-            if new_col == "":
-                continue
-
-            old_c = old_col + "_old"
-            new_c = new_col + "_new"
-
-            if old_c in matched.columns and new_c in matched.columns:
-
-                diff = matched[
-                    matched[old_c].fillna("") != matched[new_c].fillna("")
-                ].copy()
-
-                if not diff.empty:
-                    diff["Field"] = old_col
-                    changes_list.append(diff)
-
-        changes_df = pd.concat(changes_list) if changes_list else pd.DataFrame()
-
-        # =========================
-        # عرض النتائج منفصل
-        # =========================
+    # =========================
+    # عرض النتائج
+    # =========================
+    if "new_items" in st.session_state:
 
         st.subheader("🟢 الأجهزة الجديدة")
-        st.dataframe(new_items)
+        st.dataframe(st.session_state["new_items"], use_container_width=True)
 
         st.subheader("🔴 الأجهزة المفقودة")
-        st.dataframe(missing_items)
+        st.dataframe(st.session_state["missing_items"], use_container_width=True)
 
-        st.subheader("🟡 الأجهزة المتغيرة")
-        st.dataframe(changes_df)
+    # =========================
+    # زر التقرير
+    # =========================
+    if st.button("✔ تحديث البيانات وإنشاء التقرير"):
 
-        # =========================
-        # تحديث + تحميل Excel
-        # =========================
-
-        if st.button("✔ تحديث البيانات وإنشاء التقرير"):
-
-            final_df = new_df.copy()
+        if "new_items" not in st.session_state:
+            st.error("من فضلك اضغط بدء المطابقة أولاً")
+        else:
 
             output = BytesIO()
 
             with pd.ExcelWriter(output, engine="openpyxl") as writer:
-                final_df.to_excel(writer, sheet_name="البيانات النهائية", index=False)
-                new_items.to_excel(writer, sheet_name="الجديدة", index=False)
-                missing_items.to_excel(writer, sheet_name="المفقودة", index=False)
-                changes_df.to_excel(writer, sheet_name="التغييرات", index=False)
+
+                pd.DataFrame().to_excel(writer, sheet_name="البيانات النهائية", index=False)
+
+                st.session_state["new_items"].to_excel(writer, sheet_name="الجديدة", index=False)
+                st.session_state["missing_items"].to_excel(writer, sheet_name="المفقودة", index=False)
 
             st.success("تم إنشاء التقرير بنجاح ✅")
 
