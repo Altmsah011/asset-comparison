@@ -180,18 +180,27 @@ else:
                 cols = [old_key] + [c for c in changed_df.columns if c != old_key]
                 changed_df = changed_df[cols]
 
-            # 🌟 دمج البيانات الجديدة مع البيانات المفقودة لإنشاء شيت البيانات النهائية الشامل
-            # نقوم بإعادة ترتيب أعمدة شيت المفقودة لتتطابق مع شيت الجديد لدمجهم بأمان
+            # دمج البيانات الجديدة والمفقودة لإنشاء شيت البيانات النهائية الشامل
             missing_aligned = missing.reindex(columns=new_df.columns)
             final_combined_df = pd.concat([new_df, missing_aligned], ignore_index=True)
 
-            # تخزين كل الجداول المحدثة في الجلسة
+            # تخزين الحالات في الجلسة لضمان العرض المستقر وثبات الشاشة
             st.session_state["new_items"] = new_items
             st.session_state["missing_items"] = missing
             st.session_state["changed_items"] = changed_df
             st.session_state["final_items"] = final_combined_df
+            
+            # 🌟 بناء ملف الإكسيل مسبقاً وتخزينه في الجلسة لحماية زر التحميل من الاختفاء نهائياً
+            excel_buffer = BytesIO()
+            with pd.ExcelWriter(excel_buffer, engine="openpyxl") as writer:
+                new_items.to_excel(writer, sheet_name="الأجهزة الجديدة", index=False)
+                missing.to_excel(writer, sheet_name="الأجهزة المفقودة", index=False)
+                changed_df.to_excel(writer, sheet_name="البيانات المعدلة", index=False)
+                final_combined_df.to_excel(writer, sheet_name="البيانات النهائية الشاملة", index=False)
+            
+            st.session_state["excel_file_data"] = excel_buffer.getvalue()
             st.session_state["match_processed"] = True
-            st.success("تمت عملية المطابقة وتجميع البيانات النهائية بنجاح! 🎯")
+            st.success("تمت عملية المطابقة وتجميع البيانات بنجاح! 🎯")
 
         # عرض واستخراج التقرير النهائي
         if st.session_state.get("match_processed", False):
@@ -210,14 +219,3 @@ else:
                 else:
                     st.info("لا توجد اختلافات مكتشفة في قيم الحقول المشتركة.")
             elif choice == "🔵 البيانات النهائية الشاملة":
-                st.dataframe(st.session_state["final_items"], use_container_width=True)
-
-            # استخراج التقرير النهائي
-            st.write("---")
-            st.subheader("💾 استخراج ملف التقرير المحدث")
-            
-            def make_excel():
-                output = BytesIO()
-                with pd.ExcelWriter(output, engine="openpyxl") as writer:
-                    st.session_state["final_items"].to_excel(writer, sheet_name="البيانات النهائية", index=False)
-                    st.session_state["new_items"].to_excel(writer, sheet_name="الجديدة", index=False)
