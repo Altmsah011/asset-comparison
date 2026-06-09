@@ -18,7 +18,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# 2. إدارة قاعدة البيانات المحلية للمخدم للمستخدمين
+# 2. إدارة قاعدة البيانات المحلية للمستخدمين
 DB_FILE = "users_db.txt"
 
 def load_users():
@@ -202,20 +202,23 @@ else:
             st.session_state["match_processed"] = True
             st.success("تمت عملية المطابقة وتجميع البيانات بنجاح! 🎯")
 
-        # عرض واستخراج التقرير النهائي
+        # عرض واستخراج التقرير النهائي (تم التعديل الجذري هنا لمنع أخطاء الشروط والمسافات)
         if st.session_state.get("match_processed", False):
             st.write("---")
             st.subheader("📊 استعراض الجداول والنتائج")
             
             choice = st.radio("اختر الفئة لعرض بياناتها المباشرة:", ["🟢 الأجهزة الجديدة", "🔴 الأجهزة المفقودة", "🟡 البيانات المعدلة قيمياً", "🔵 البيانات النهائية الشاملة"], horizontal=True)
             
-            if choice == "🟢 الأجهزة الجديدة":
-                st.dataframe(st.session_state["new_items"], use_container_width=True)
-            elif choice == "🔴 الأجهزة المفقودة":
-                st.dataframe(st.session_state["missing_items"], use_container_width=True)
-            elif choice == "🟡 البيانات المعدلة قيمياً":
-                if not st.session_state["changed_items"].empty:
-                    st.dataframe(st.session_state["changed_items"], use_container_width=True)
-                else:
-                    st.info("لا توجد اختلافات مكتشفة في قيم الحقول المشتركة.")
-            elif choice == "🔵 البيانات النهائية الشاملة":
+            # نظام الـ Mapping المستحيل يغلط في مسافة
+            data_map = {
+                "🟢 الأجهزة الجديدة": st.session_state["new_items"],
+                "🔴 الأجهزة المفقودة": st.session_state["missing_items"],
+                "🟡 البيانات المعدلة قيمياً": st.session_state["changed_items"],
+                "🔵 البيانات النهائية الشاملة": st.session_state["final_items"]
+            }
+            
+            selected_df = data_map[choice]
+            
+            if choice == "🟡 البيانات المعدلة قيمياً" and selected_df.empty:
+                st.info("لا توجد اختلافات مكتشفة في قيم الحقول المشتركة.")
+            else:
