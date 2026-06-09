@@ -73,7 +73,7 @@ if not st.session_state["logged_in"]:
 # ==========================================
 else:
     # شريط علوي يحتوي على ترحيب بالمستخدم الحالي وزر تسجيل الخروج
-    top_col1, top_col2 = st.columns([4, 1])
+    top_col1, top_col2 = st.columns()
     with top_col1:
         st.title("📦 نظام المطابقة المطور")
         st.caption(f"👤 المستخدم الحالي: **{st.session_state['current_user']}**")
@@ -93,7 +93,7 @@ else:
         with st.expander("🛠️ لوحة تحكم مدير النظام (إدارة المستخدمين)", expanded=False):
             st.subheader("➕ إضافة مستخدم جديد")
             
-            new_u_col, new_p_col, btn_col = st.columns([2, 2, 1])
+            new_u_col, new_p_col, btn_col = st.columns()
             with new_u_col:
                 new_username = st.text_input("👤 اسم المستخدم الجديد").strip().lower()
             with new_p_col:
@@ -114,7 +114,6 @@ else:
             
             st.write("---")
             st.subheader("📋 المستخدمين الحاليين في النظام")
-            # عرض الحسابات الحالية لسهولة المتابعة (بدون عرض الباسورد لدواعي الأمان)
             current_users_list = [{"اسم المستخدم": u, "نوع الحساب": "مدير" if u == "admin" else "مستخدم"} for u in USERS_DATABASE.keys()]
             st.table(pd.DataFrame(current_users_list))
             
@@ -235,3 +234,6 @@ else:
         # عرض النتائج
         # =========================
         if "new_items" in st.session_state:
+            tab1, tab2, tab3 = st.tabs(["🟢 الأجهزة الجديدة", "🔴 الأجهزة المفقودة", "🟡 بيانات تم تعديلها"])
+            
+            with tab1:
