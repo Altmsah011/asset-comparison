@@ -1,97 +1,132 @@
 import streamlit as st
 import pandas as pd
+from io import BytesIO
 
-st.title("Asset Management System 🔍 (Pro Version)")
+st.set_page_config(page_title="نظام المطابقة", layout="wide")
 
-old_file = st.file_uploader("Upload OLD File")
-new_file = st.file_uploader("Upload NEW File")
+st.markdown("""
+<style>
+html, body, [class*="css"] {
+    direction: rtl;
+    text-align: right;
+}
+</style>
+""", unsafe_allow_html=True)
+
+st.title("📦 نظام المطابقة")
+
+# Upload files
+old_file = st.file_uploader("📁 ارفع الملف القديم", type=["xlsx"])
+new_file = st.file_uploader("📁 ارفع الملف الجديد", type=["xlsx"])
 
 if old_file and new_file:
 
     old_df = pd.read_excel(old_file)
     new_df = pd.read_excel(new_file)
 
-    st.success("Files Loaded Successfully ✅")
+    st.success("تم تحميل الملفات بنجاح ✅")
 
-    old_serial = st.selectbox("Old Serial Column", old_df.columns)
-    new_serial = st.selectbox("New Serial Column", new_df.columns)
+    # اختيار مفتاح المطابقة
+    st.subheader("🔗 اختيار عمود المطابقة")
 
-    if st.button("Run Comparison 🔍"):
+    old_key = st.selectbox("عمود المطابقة في القديم", old_df.columns)
+    new_key = st.selectbox("عمود المطابقة في الجديد", new_df.columns)
 
-        # Normalize
-        old_df = old_df.rename(columns={old_serial: "serial"})
-        new_df = new_df.rename(columns={new_serial: "serial"})
+    # Mapping
+    st.subheader("🔗 ربط الأعمدة")
 
-        # Merge full
+    mapping = {}
+
+    for col_old in old_df.columns:
+        if col_old == old_key:
+            continue
+
+        mapping[col_old] = st.selectbox(
+            f"{col_old} ↔",
+            [""] + list(new_df.columns),
+            key=col_old
+        )
+
+    if st.button("🚀 بدء المطابقة"):
+
+        # توحيد المفاتيح
+        old_df = old_df.rename(columns={old_key: "key"})
+        new_df = new_df.rename(columns={new_key: "key"})
+
         merged = old_df.merge(
             new_df,
-            on="serial",
+            on="key",
             how="outer",
             suffixes=("_old", "_new"),
             indicator=True
         )
 
-        # Categories
+        # 🟢 الجديدة
         new_items = merged[merged["_merge"] == "right_only"]
+
+        # 🔴 المفقودة
         missing_items = merged[merged["_merge"] == "left_only"]
+
+        # 🟡 المشتركة
         matched = merged[merged["_merge"] == "both"]
 
-        st.subheader("🟢 New Devices")
+        # ⚠️ التغييرات
+        changes_list = []
+
+        for old_col, new_col in mapping.items():
+
+            if new_col == "":
+                continue
+
+            old_c = old_col + "_old"
+            new_c = new_col + "_new"
+
+            if old_c in matched.columns and new_c in matched.columns:
+
+                diff = matched[
+                    matched[old_c].fillna("") != matched[new_c].fillna("")
+                ].copy()
+
+                if not diff.empty:
+                    diff["Field"] = old_col
+                    changes_list.append(diff)
+
+        changes_df = pd.concat(changes_list) if changes_list else pd.DataFrame()
+
+        # =========================
+        # عرض النتائج منفصل
+        # =========================
+
+        st.subheader("🟢 الأجهزة الجديدة")
         st.dataframe(new_items)
 
-        st.subheader("🔴 Missing Devices")
+        st.subheader("🔴 الأجهزة المفقودة")
         st.dataframe(missing_items)
 
-        # Detect changes
-        changes = []
+        st.subheader("🟡 الأجهزة المتغيرة")
+        st.dataframe(changes_df)
 
-        for col in old_df.columns:
-            if col != "serial":
-                old_col = col + "_old"
-                new_col = col + "_new"
+        # =========================
+        # تحديث + تحميل Excel
+        # =========================
 
-                if old_col in matched.columns and new_col in matched.columns:
-                    diff = matched[matched[old_col] != matched[new_col]].copy()
+        if st.button("✔ تحديث البيانات وإنشاء التقرير"):
 
-                    if not diff.empty:
-                        diff["Changed Column"] = col
-                        changes.append(diff)
-
-        if changes:
-            changes_df = pd.concat(changes)
-
-            st.subheader("⚠️ Changes Detected")
-            st.dataframe(changes_df)
-
-        else:
-            changes_df = pd.DataFrame()
-            st.success("No Changes Found ✅")
-
-        # Approve button
-        if st.button("✔ Apply Updates"):
-
-            final = old_df.set_index("serial").combine_first(
-                new_df.set_index("serial")
-            ).reset_index()
-
-            st.subheader("📦 Final Updated Data")
-            st.dataframe(final)
-
-            # Excel export (multi sheets)
-            from io import BytesIO
-            import xlsxwriter
+            final_df = new_df.copy()
 
             output = BytesIO()
 
-            with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-                final.to_excel(writer, sheet_name='Final Data', index=False)
-                changes_df.to_excel(writer, sheet_name='Changes', index=False)
-                new_items.to_excel(writer, sheet_name='New Items', index=False)
-                missing_items.to_excel(writer, sheet_name='Missing Items', index=False)
+            with pd.ExcelWriter(output, engine="openpyxl") as writer:
+                final_df.to_excel(writer, sheet_name="البيانات النهائية", index=False)
+                new_items.to_excel(writer, sheet_name="الجديدة", index=False)
+                missing_items.to_excel(writer, sheet_name="المفقودة", index=False)
+                changes_df.to_excel(writer, sheet_name="التغييرات", index=False)
+
+            st.success("تم إنشاء التقرير بنجاح ✅")
 
             st.download_button(
-                "📥 Download Full Report (Excel)",
+                "📥 تحميل التقرير",
                 data=output.getvalue(),
-                file_name="Asset_Report.xlsx",
+                file_name="System_Report.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             )
