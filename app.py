@@ -18,7 +18,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# 2. إدارة قاعدة البيانات المحلية للمستخدمين
+# 2. إدارة قاعدة البيانات المحلية للمخدم للمستخدمين
 DB_FILE = "users_db.txt"
 
 def load_users():
@@ -160,7 +160,7 @@ else:
             new_items = new_items.rename(columns={"key": new_key})
 
             changed_rows = []
-            for _, row in matched.iterrows():
+            for idx, row in matched.iterrows():
                 row_changes = {}
                 has_change = False
                 for col_old, col_new in mapping.items():
@@ -184,13 +184,13 @@ else:
             missing_aligned = missing.reindex(columns=new_df.columns)
             final_combined_df = pd.concat([new_df, missing_aligned], ignore_index=True)
 
-            # تخزين الحالات في الجلسة لضمان العرض المستقر وثبات الشاشة
+            # تخزين الحالات في الجلسة لضمان العرض وثبات الشاشة
             st.session_state["new_items"] = new_items
             st.session_state["missing_items"] = missing
             st.session_state["changed_items"] = changed_df
             st.session_state["final_items"] = final_combined_df
             
-            # 🌟 بناء ملف الإكسيل مسبقاً وتخزينه في الجلسة لحماية زر التحميل من الاختفاء نهائياً
+            # بناء ملف الإكسيل مسبقاً وتخزينه في الجلسة لحمايته وثباته
             excel_buffer = BytesIO()
             with pd.ExcelWriter(excel_buffer, engine="openpyxl") as writer:
                 new_items.to_excel(writer, sheet_name="الأجهزة الجديدة", index=False)
