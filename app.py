@@ -42,7 +42,7 @@ def save_users(users_dict):
 
 USERS_DATABASE = load_users()
 
-# 3. إدارة جلسة المستخدم ومنع الـ Rerun العشوائي
+# 3. إدارة حالة الجلسة ومنع الـ Rerun العشوائي
 if "logged_in" not in st.session_state:
     st.session_state["logged_in"] = False
 if "current_user" not in st.session_state:
@@ -180,19 +180,25 @@ else:
                 cols = [old_key] + [c for c in changed_df.columns if c != old_key]
                 changed_df = changed_df[cols]
 
+            # 🌟 دمج البيانات الجديدة مع البيانات المفقودة لإنشاء شيت البيانات النهائية الشامل
+            # نقوم بإعادة ترتيب أعمدة شيت المفقودة لتتطابق مع شيت الجديد لدمجهم بأمان
+            missing_aligned = missing.reindex(columns=new_df.columns)
+            final_combined_df = pd.concat([new_df, missing_aligned], ignore_index=True)
+
+            # تخزين كل الجداول المحدثة في الجلسة
             st.session_state["new_items"] = new_items
             st.session_state["missing_items"] = missing
             st.session_state["changed_items"] = changed_df
-            st.session_state["final_items"] = new_df.copy()
+            st.session_state["final_items"] = final_combined_df
             st.session_state["match_processed"] = True
-            st.success("تمت عملية المطابقة بنجاح! 🎯")
+            st.success("تمت عملية المطابقة وتجميع البيانات النهائية بنجاح! 🎯")
 
         # عرض واستخراج التقرير النهائي
         if st.session_state.get("match_processed", False):
             st.write("---")
             st.subheader("📊 استعراض الجداول والنتائج")
             
-            choice = st.radio("اختر الفئة لعرض بياناتها المباشرة:", ["🟢 الأجهزة الجديدة", "🔴 الأجهزة المفقودة", "🟡 البيانات المعدلة قيمياً"], horizontal=True)
+            choice = st.radio("اختر الفئة لعرض بياناتها المباشرة:", ["🟢 الأجهزة الجديدة", "🔴 الأجهزة المفقودة", "🟡 البيانات المعدلة قيمياً", "🔵 البيانات النهائية الشاملة"], horizontal=True)
             
             if choice == "🟢 الأجهزة الجديدة":
                 st.dataframe(st.session_state["new_items"], use_container_width=True)
@@ -203,8 +209,10 @@ else:
                     st.dataframe(st.session_state["changed_items"], use_container_width=True)
                 else:
                     st.info("لا توجد اختلافات مكتشفة في قيم الحقول المشتركة.")
+            elif choice == "🔵 البيانات النهائية الشاملة":
+                st.dataframe(st.session_state["final_items"], use_container_width=True)
 
-            # إنشاء وتحميل ملف الاكسيل النهائي بطريقة برمجية مباشرة تمنع الاختفاء
+            # استخراج التقرير النهائي
             st.write("---")
             st.subheader("💾 استخراج ملف التقرير المحدث")
             
@@ -213,13 +221,3 @@ else:
                 with pd.ExcelWriter(output, engine="openpyxl") as writer:
                     st.session_state["final_items"].to_excel(writer, sheet_name="البيانات النهائية", index=False)
                     st.session_state["new_items"].to_excel(writer, sheet_name="الجديدة", index=False)
-                    st.session_state["missing_items"].to_excel(writer, sheet_name="المفقودة", index=False)
-                    st.session_state["changed_items"].to_excel(writer, sheet_name="التعديلات والاختلافات", index=False)
-                return output.getvalue()
-            
-            st.download_button(
-                label="📥 تحميل التقرير كملف Excel شامل",
-                data=make_excel(),
-                file_name="System_Final_Report.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            )
