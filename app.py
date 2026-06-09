@@ -18,7 +18,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# 2. إدارة قاعدة البيانات المحلية للمخدم للمستخدمين
+# 2. إدارة قاعدة البيانات المحلية للمستخدمين
 DB_FILE = "users_db.txt"
 
 def load_users():
@@ -109,7 +109,6 @@ else:
     new_file = st.file_uploader("📁 ارفع الملف الجديد", type=["xlsx"])
 
     if old_file and new_file:
-        # قراءة البيانات بشكل معزول ومستقر في الذاكرة لمنع البطء والتقطيع
         if "loaded_filename" not in st.session_state or st.session_state.get("loaded_filename") != new_file.name:
             st.session_state["old_df"] = pd.read_excel(old_file)
             st.session_state["new_df"] = pd.read_excel(new_file)
@@ -141,20 +140,17 @@ else:
                 key=f"m_{col_old}"
             )
 
-        # زر تنفيذ العملية الأساسية بنقرة واحدة مستقرة
+        # زر تنفيذ العملية الأساسية
         if st.button("🚀 بدء المطابقة وفحص التغييرات الآن"):
             df_o = old_df.copy().rename(columns={old_key: "key"})
             df_n = new_df.copy().rename(columns={new_key: "key"})
 
-            # دمج خارجي (Outer Join) سريع
             merged = df_o.merge(df_n, on="key", how="outer", suffixes=("_old", "_new"), indicator=True)
 
-            # تصفية وفصل البيانات
             missing = merged[merged["_merge"] == "left_only"].copy()
             new_items = merged[merged["_merge"] == "right_only"].copy()
             matched = merged[merged["_merge"] == "both"].copy()
 
-            # تنظيف وتنسيق أعمدة المفقود والجديد
             missing = missing[[c for c in missing.columns if c.endswith("_old") or c == "key"]]
             missing.columns = [c.replace("_old", "") for c in missing.columns]
             missing = missing.rename(columns={"key": old_key})
@@ -163,7 +159,6 @@ else:
             new_items.columns = [c.replace("_new", "") for c in new_items.columns]
             new_items = new_items.rename(columns={"key": new_key})
 
-            # فحص التعديلات الفردية بطريقة مصفوفية سريعة لمنع التقطيع البصري
             changed_rows = []
             for _, row in matched.iterrows():
                 row_changes = {}
@@ -185,7 +180,6 @@ else:
                 cols = [old_key] + [c for c in changed_df.columns if c != old_key]
                 changed_df = changed_df[cols]
 
-            # تجميد البيانات في الذاكرة حتى لا تمسح عند استعراض الراديو بالأسفل
             st.session_state["new_items"] = new_items
             st.session_state["missing_items"] = missing
             st.session_state["changed_items"] = changed_df
@@ -193,7 +187,7 @@ else:
             st.session_state["match_processed"] = True
             st.success("تمت عملية المطابقة بنجاح! 🎯")
 
-        # عرض واستخراج التقرير النهائي (يعتمد على قفل التجميد match_processed)
+        # عرض واستخراج التقرير النهائي
         if st.session_state.get("match_processed", False):
             st.write("---")
             st.subheader("📊 استعراض الجداول والنتائج")
@@ -210,14 +204,22 @@ else:
                 else:
                     st.info("لا توجد اختلافات مكتشفة في قيم الحقول المشتركة.")
 
-            # إنشاء وتحميل ملف الاكسيل النهائي
+            # إنشاء وتحميل ملف الاكسيل النهائي بطريقة برمجية مباشرة تمنع الاختفاء
             st.write("---")
             st.subheader("💾 استخراج ملف التقرير المحدث")
             
-            output = BytesIO()
-            with pd.ExcelWriter(output, engine="openpyxl") as writer:
-                st.session_state["final_items"].to_excel(writer, sheet_name="البيانات النهائية", index=False)
-                st.session_state["new_items"].to_excel(writer, sheet_name="الجديدة", index=False)
-                st.session_state["missing_items"].to_excel(writer, sheet_name="المفقودة", index=False)
-                st.session_state["changed_items"].to_excel(writer, sheet_name="التعديلات والاختلافات", index=False)
+            def make_excel():
+                output = BytesIO()
+                with pd.ExcelWriter(output, engine="openpyxl") as writer:
+                    st.session_state["final_items"].to_excel(writer, sheet_name="البيانات النهائية", index=False)
+                    st.session_state["new_items"].to_excel(writer, sheet_name="الجديدة", index=False)
+                    st.session_state["missing_items"].to_excel(writer, sheet_name="المفقودة", index=False)
+                    st.session_state["changed_items"].to_excel(writer, sheet_name="التعديلات والاختلافات", index=False)
+                return output.getvalue()
             
+            st.download_button(
+                label="📥 تحميل التقرير كملف Excel شامل",
+                data=make_excel(),
+                file_name="System_Final_Report.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
