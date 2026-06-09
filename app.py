@@ -171,7 +171,7 @@ if old_file and new_file:
         with pd.ExcelWriter(output, engine="openpyxl") as writer:
             st.session_state["final_items"].to_excel(writer, sheet_name="البيانات النهائية", index=False)
             st.session_state["new_items"].to_excel(writer, sheet_name="الجديدة", index=False)
-            st.session_state["missing_items"].to_excel(writer, sheet_name="المالمفقودة", index=False)
+            st.session_state["missing_items"].to_excel(writer, sheet_name="المفقودة", index=False)
             st.session_state["changed_items"].to_excel(writer, sheet_name="التعديلات والاختلافات", index=False)
         
         st.download_button(
