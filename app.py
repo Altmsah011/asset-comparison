@@ -53,7 +53,7 @@ if "current_user" not in st.session_state:
 if not st.session_state["logged_in"]:
     st.title("🔐 تسجيل الدخول إلى النظام")
     
-    col1, col2, col3 = st.columns([1, 2, 1])
+    col1, col2, col3 = st.columns()
     with col2:
         st.write("الرجاء إدخال بيانات حسابك للوصول إلى نظام المطابقة:")
         username = st.text_input("👤 اسم المستخدم").strip().lower()
@@ -73,7 +73,7 @@ if not st.session_state["logged_in"]:
 # ==========================================
 else:
     # شريط علوي يحتوي على ترحيب بالمستخدم الحالي وزر تسجيل الخروج
-    top_col1, top_col2 = st.columns([3, 1])
+    top_col1, top_col2 = st.columns()
     with top_col1:
         st.title("📦 نظام المطابقة المطور")
         st.caption(f"👤 المستخدم الحالي: **{st.session_state['current_user']}**")
@@ -93,7 +93,7 @@ else:
         with st.expander("🛠️ لوحة تحكم مدير النظام (إدارة المستخدمين)", expanded=False):
             st.subheader("➕ إضافة مستخدم جديد")
             
-            new_u_col, new_p_col, btn_col = st.columns([2, 2, 1])
+            new_u_col, new_p_col, btn_col = st.columns()
             with new_u_col:
                 new_username = st.text_input("👤 اسم المستخدم الجديد").strip().lower()
             with new_p_col:
@@ -231,9 +231,8 @@ else:
             st.success("تمت المطابقة وفحص التغييرات بنجاح ✅")
 
         # =========================
-        # عرض النتائج
+        # عرض النتائج باستخدام Selectbox آمن ومستقر
         # =========================
         if "new_items" in st.session_state:
-            tab1, tab2, tab3 = st.tabs(["🟢 الأجهزة الجديدة", "🔴 الأجهزة المفقودة", "🟡 بيانات تم تعديلها"])
-            
-            with tab1:
+            st.write("---")
+            st.subheader("📊 استعراض نتائج المطابقة")
